@@ -18,10 +18,6 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
 using System.Windows.Shapes;
-using MathNet.Symbolics;
-using static MathNet.Symbolics.VisualExpression;
-using Expr = MathNet.Symbolics.Expression;
-using static Microsoft.FSharp.Core.ByRefKinds;
 using System.Diagnostics;
 using System.IO;
 
@@ -35,14 +31,10 @@ namespace Calculadora
         public MainWindow()
         {
             InitializeComponent();
-
-            /*
-             TERMINE DE INTEGRAR TODO LO DE LAS RAICES, AHORA TENGO QUE MEJORAR LA EFICIENCIA Y LOGICA DE LOS METODOS.
-            POR LO QUE SÉ, HAY QUE MEJORAR "getTermFromIndexTest" Y "replaceTermFromIndex"
-             */
+            //string input = "12+232x√(551-(√(2+2)x100÷12))+1+62"; TEST
+            
             panel = new KeyPanel();
             this.DataContext = panel;
-
             TextBoxScreen.Focus();
         }
 

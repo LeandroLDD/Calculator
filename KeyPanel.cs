@@ -45,7 +45,7 @@ namespace Calculadora
                 term = string.Empty;
                 foreach (char value in expression)
                 {
-                    if (!IsOperationKey(value) || term.Count(element => element == '(') > term.Count(element => element == ')'))
+                    if (!isOperationKey(value) || term.Count(element => element == '(') > term.Count(element => element == ')'))
                     {
                         term += value;
                     }
@@ -59,75 +59,18 @@ namespace Calculadora
             }
             return termsSeparated;
         }
-        public static bool getBeginAndLastIndexFromIndex(int indexStart, string str, out int beginIndex,out int lastIndex)
-        {
-            List<string>? termsSeparated;
-            string mathTerm;
-            int indexTerm;
-            bool ok;
 
-            termsSeparated = SeparateForTerms(str);
-            beginIndex = -1;
-            lastIndex = -1;
-            indexTerm = 0;
-            ok = false;
-
-            if (termsSeparated != null && indexStart > -1 && indexStart < str.Length && termsSeparated.Count > 0) {
-                while (lastIndex < indexStart)
-                {
-                    mathTerm = termsSeparated[indexTerm];
-                    if (lastIndex > 0)
-                    {
-                        lastIndex++;
-                    }
-                    lastIndex += mathTerm.Length;
-                    beginIndex = lastIndex - mathTerm.Length;
-                    indexTerm++;
-                    ok = true;
-                }
-            }
-            beginIndex++;
-            lastIndex++;
-
-            return ok;
-        }
         private static string getTermFromIndex(int startIndex, string expression)
         {
             string term;
 
             term = string.Empty;
-            //if(getBeginAndLastIndexFromIndex(startIndex,expression,out int beginIndex,out int lastIndex))
-            //{
-            //    term = expression[beginIndex..lastIndex];
-            //}
-            if(getTermFromIndexTest(startIndex,expression,out int beginIndex,out int lastIndex))
+
+            if(getLastIndexTerm(startIndex,expression,out int lastIndex))
             {
-                term = expression[beginIndex..lastIndex];
+                term = expression[startIndex..lastIndex];
             }
             return term;
-        }
-        private static string getNumBetweenOperatoinsFromIndex(int indexStart, string expression)
-        {
-            char[] delimiters = { (char)EOperators.Sum, (char)EOperators.Substract, (char)EOperators.Multiply, (char)EOperators.Divide };
-            string numBetweenOperations;
-            char valueExpression;
-            int actualIndex;
-            numBetweenOperations = string.Empty;
-
-            if (!string.IsNullOrEmpty(expression) && indexStart > -1 && indexStart < expression.Length)
-            {
-                actualIndex = expression.LastIndexOfAny(delimiters,indexStart);
-                actualIndex++;
-                valueExpression = expression[actualIndex];
-                while (!IsOperationKey(valueExpression) && actualIndex < expression.Length)
-                {
-                    valueExpression = expression[actualIndex];
-                    if (IsNumericKey(valueExpression)) numBetweenOperations += valueExpression;
-                    actualIndex++;
-                }
-            }
-
-            return numBetweenOperations;
         }
         private static string getNumTermFromIndex(int indexStart, string expression, bool advanceBrackets = true)
         {
@@ -139,7 +82,7 @@ namespace Calculadora
             string patternOnlyNums;
             Match matchNumber;
 
-            patternOnlyNums = @"(\d+|\(\d+\)|\((?>(?!√)[^()]+|\((?<depth>)|\)(?<-depth>))*(?(depth)(?!))\))";
+            patternOnlyNums = @"(\d+|\((?=.*\d)(?>[^()]+|\((?<depth>)|\)(?<-depth>))*(?(depth)(?!))\))";
             numReturn = string.Empty;
             if (!string.IsNullOrEmpty(expression) && indexStart >= 0  && indexStart <= expression.Length) {
 
@@ -165,7 +108,8 @@ namespace Calculadora
             }
             return numReturn;
         }
-        public static bool getTermFromIndexTest(int startIndex, string expression, out int beginIndex, out int lastIndex)
+
+        public static bool getLastIndexTerm(int startIndex, string expression, out int lastIndex)
         {
             int actualIndex;
             int countBracketOpen;
@@ -174,7 +118,6 @@ namespace Calculadora
             bool ok;
             char elementExpression;
 
-            beginIndex = -1;
             lastIndex = -1;
             actualIndex = startIndex;
             countBracketOpen = 0;
@@ -182,68 +125,47 @@ namespace Calculadora
             ok = false;
             bracketsCompleted = null;
 
-            if (!string.IsNullOrEmpty(expression) && startIndex > -1 && startIndex < expression.Length) {
-                do
+            if (string.IsNullOrEmpty(expression) && !(startIndex > -1 && startIndex < expression.Length)) return ok;
+
+            while (actualIndex < expression.Length)
+            {
+                elementExpression = expression[actualIndex];
+
+                if (isOperationKey(elementExpression) && (bracketsCompleted == true || bracketsCompleted == null))
                 {
-                    elementExpression = expression[actualIndex];
+                    break;
+                }
 
-                    if (IsOperationKey(elementExpression))
+                if (isBracketsKey(elementExpression))
+                {
+                    bracketsCompleted = false;
+                    if (elementExpression == '(') countBracketOpen++;
+
+                    else
                     {
-                        if (bracketsCompleted == false)
-                        {
-                            if (actualIndex < expression.Length-1) actualIndex++;
-                        }
+                        countBracketClose++;
+                        if (countBracketOpen == countBracketClose) bracketsCompleted = true;
+         
+                        else if (countBracketOpen < countBracketClose) break;
 
-                        else actualIndex--;
                     }
-                    if (isBracketsKey(elementExpression))
-                    {
-                        bracketsCompleted = false;
-                        if (elementExpression == '(') countBracketOpen++;
-                        else
-                        {
-                            countBracketClose++;
-                            if (countBracketOpen == countBracketClose)
-                            {
-                                actualIndex++;
-                                break;
-                            }
-                            if (countBracketOpen < countBracketClose)
-                            {
-                                bracketsCompleted = null;
-                                actualIndex--;
-                            }
-                        }
-                    }
-                    actualIndex++;
+                }
+                actualIndex++;
+            } 
 
-                } while (actualIndex < expression.Length &&
-                !((IsOperationKey(elementExpression) || isBracketsKey(elementExpression)) && bracketsCompleted == null));
+            ok = true;
+            lastIndex = actualIndex;
 
-                ok = true;
-                beginIndex = startIndex;
-                lastIndex = actualIndex;
-            }
             return ok;
         }
-        public static string replaceTermFromIndex(int indexStart, string expression, string newTerm)
+        public static string replaceTermFromIndex(int startIndex, string expression, string newTerm)
         {
             string operationReturn;
             operationReturn = string.Empty;
 
-            //if (getBeginAndLastIndexFromIndex(indexStart, expression, out int beginIndex, out int lastIndex))
-            //{
-            if (getTermFromIndexTest(indexStart, expression, out int beginIndex, out int lastIndex))
+            if (getLastIndexTerm(startIndex, expression, out int lastIndex))
             {
-                //string jose = expression[beginIndex..lastIndex];
-                //if (jose.Count(item => item == '√') > 1)
-                //{
-                //    beginIndex++;
-                //    lastIndex--;
-                //    getBeginAndLastIndexFromIndex(beginIndex, expression[beginIndex..lastIndex], out beginIndex, out lastIndex);
-                //}
-                //jose = jose[beginIndex..lastIndex];
-                operationReturn = expression.Substring(0, beginIndex) + newTerm + expression.Substring(lastIndex);
+                operationReturn = expression.Substring(0, startIndex) + newTerm + expression.Substring(lastIndex);
             }
 
             return operationReturn;
@@ -258,7 +180,6 @@ namespace Calculadora
             indexSearch = newExpression.IndexOf(oldTerm);
             while (indexSearch != -1)
             {
-                //numsExpression = getNumBetweenOperatoinsFromIndex(indexSearch, newExpression);
                 numsExpression = getNumTermFromIndex(indexSearch, newExpression);
 
                 if (!string.IsNullOrEmpty(numsExpression))
@@ -323,11 +244,11 @@ namespace Calculadora
 
                         if (index > -1 && index < ScreenExpression.Length)
                         {
-                            if (IsOperationKey(ScreenExpression[index])) ok = false;
+                            if (isOperationKey(ScreenExpression[index])) ok = false;
                         }
                         if ((index - 1) > -1 && (index - 1) < ScreenExpression.Length)
                         {
-                            if (IsOperationKey(ScreenExpression[index - 1])) ok = false;
+                            if (isOperationKey(ScreenExpression[index - 1])) ok = false;
                         }
                     }break;
 
@@ -432,7 +353,7 @@ namespace Calculadora
             ScreenResult = string.Empty;
         }
         public static bool IsNumericKey(char key) => int.TryParse(key.ToString(), out _);
-        public static bool IsOperationKey(char key) => key == '+' || key == '-' || key == 'x' || key == '*' || key == '÷' || key == '/';
+        public static bool isOperationKey(char key) => key == '+' || key == '-' || key == 'x' || key == '*' || key == '÷' || key == '/';
         public static bool isDelKey(char key) => key == ' ';
         public static bool isEqualKey(char key) => key == '=';
         public static bool isPointKey(char key) => key == '.';
@@ -446,7 +367,7 @@ namespace Calculadora
 
             if (IsNumericKey(key)) return KeyPanelType.Numeric;
 
-            if (IsOperationKey(key)) return KeyPanelType.Operation;
+            if (isOperationKey(key)) return KeyPanelType.Operation;
 
             if (isDelKey(key)) return KeyPanelType.Del;
 
